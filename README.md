@@ -1,3 +1,5 @@
 # TEKA3003 Miniprojekti
 
-Ajankäyttö yms. yms.
+Backlog
+https://docs.google.com/spreadsheets/d/1KE2dFqVVBGNNGbfewPiMjXgGZsPpuXjqI6NuIx-8sjQ/edit?usp=sharing
+
