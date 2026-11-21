@@ -481,3 +481,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 .direnv/
+database.db
+database.db.*

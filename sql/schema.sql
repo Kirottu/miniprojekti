@@ -9,8 +9,9 @@ CREATE TABLE users(
     PRIMARY KEY(id)  
 );
 
-DROP TABLE IF EXISTS references;
-CREATE TABLE references(
+-- "references" is reserved by SQL so this'll have to do
+DROP TABLE IF EXISTS citations;
+CREATE TABLE citations(
     -- UUID
     id TEXT NOT NULL,
     -- The owner of the reference
@@ -45,13 +46,14 @@ CREATE TABLE references(
     issn TEXT,
     isbn TEXT,
     url TEXT,
-    FOREIGN KEY(user) REFERENCES users(id),
+    FOREIGN KEY(user) REFERENCES users(id) ON DELETE CASCADE,
     PRIMARY KEY(id)
 );
 
+DROP TABLE IF EXISTS authors;
 CREATE TABLE authors(
     reference TEXT NOT NULL,
     author TEXT NOT NULL,
-    FOREIGN KEY(reference) REFERENCES references(id),
+    FOREIGN KEY(reference) REFERENCES citations(id) ON DELETE CASCADE,
     PRIMARY KEY(reference, author)
 );
