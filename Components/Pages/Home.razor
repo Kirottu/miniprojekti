@@ -1,16 +1,186 @@
 ﻿@page "/"
-
-<PageTitle>References</PageTitle>
+@rendermode InteractiveServer
 
 <h1>References</h1>
+<p>View, filter, add, and edit mock references.</p>
 
-<p>View and manage your references.</p>
-
-<h2>Reference List</h2>
-
-<div class="card p-3 mb-3">
-    <h5>Example Reference</h5>
-    <p>Author: Example Author</p>
-    <p>Year: 2024</p>
-    <p>Type: Book</p>
+<div class="mb-3">
+    <input class="form-control"
+           @bind="hakusana"
+           @bind:event="oninput"
+           placeholder="Filter sources by key, author, title, or type..." />
 </div>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Key</th>
+            <th>Type</th>
+            <th>Author</th>
+            <th>Title</th>
+            <th>Year</th>
+            <th style="width: 180px;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var viite in SuodatetutViitteet)
+        {
+            if (muokattavaId == viite.Id)
+            {
+                <tr>
+                    <td><input class="form-control form-control-sm" @bind="muokkausAvain" /></td>
+                    <td>
+                        <select class="form-select form-select-sm" @bind="muokkausTyyppi">
+                            <option value="article">article</option>
+                            <option value="book">book</option>
+                            <option value="inproceedings">inproceedings</option>
+                        </select>
+                    </td>
+                    <td><input class="form-control form-control-sm" @bind="muokkausTekijat" /></td>
+                    <td><input class="form-control form-control-sm" @bind="muokkausOtsikko" /></td>
+                    <td><input type="number" class="form-control form-control-sm" @bind="muokkausVuosi" /></td>
+                    <td>
+                        <button class="btn btn-success btn-sm me-1" @onclick="() => TallennaMuokkaus(viite.Id)">Save</button>
+                        <button class="btn btn-secondary btn-sm" @onclick="PeruutaMuokkaus">Cancel</button>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                <tr>
+                    <td><code>@viite.Avain</code></td>
+                    <td>@viite.Tyyppi</td>
+                    <td>@viite.Tekijat</td>
+                    <td>@viite.Otsikko</td>
+                    <td>@viite.Vuosi</td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => AloitaMuokkaus(viite)">Edit</button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => PoistaViite(viite.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<h2 class="mt-4">Add mock references </h2>
+<div class="row g-2 mb-3">
+    <div class="col-md-2">
+        <input class="form-control" @bind="uusiAvain" placeholder="Key (e.g. VPL11)" />
+    </div>
+
+    <div class="col-md-2">
+        <select class="form-select" @bind="uusiTyyppi">
+            <option value="article">article</option>
+            <option value="book">book</option>
+            <option value="inproceedings">inproceedings</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <input class="form-control" @bind="uudetTekijat" placeholder="Authors" />
+    </div>
+    <div class="col-md-3">
+        <input class="form-control" @bind="uusiOtsikko" placeholder="Title" />
+    </div>
+    <div class="col-md-2">
+        <input type="number" class="form-control" @bind="uusiVuosi" />
+    </div>
+</div>
+<button class="btn btn-primary" @onclick="LisaaViite">Add reference</button>
+
+@code {
+    private int seuraavaId = 4;
+    private string hakusana = "";
+
+    // Uuden viitteen kentät
+    private string uusiAvain = "";
+    private string uusiTyyppi = "article";
+    private string uudetTekijat = "";
+    private string uusiOtsikko = "";
+    private int uusiVuosi = 2026;
+
+    // Muokkaustilan kentät
+    private int? muokattavaId = null;
+    private string muokkausAvain = "";
+    private string muokkausTyyppi = "article";
+    private string muokkausTekijat = "";
+    private string muokkausOtsikko = "";
+    private int muokkausVuosi = 2026;
+
+    private List<MockViite> viitteet =
+    [
+        new(1, "VPL11", "inproceedings", "Vihavainen, Arto and Paksula, Matti and Luukkainen, Matti", "Extreme Apprenticeship Method in Teaching Programming for Beginners.", 2011),
+        new(2, "CBH91", "article", "Allan Collins and John Seely Brown and Ann Holum", "Cognitive apprenticeship: making thinking visible", 1991),
+        new(3, "Martin09", "book", "Martin, Robert", "Clean Code: A Handbook of Agile Software Craftsmanship", 2008)
+    ];
+
+    private IEnumerable<MockViite> SuodatetutViitteet =>
+        string.IsNullOrWhiteSpace(hakusana)
+            ? viitteet
+            : viitteet.Where(v =>
+                v.Avain.Contains(hakusana, StringComparison.OrdinalIgnoreCase) ||
+                v.Tyyppi.Contains(hakusana, StringComparison.OrdinalIgnoreCase) ||
+                v.Tekijat.Contains(hakusana, StringComparison.OrdinalIgnoreCase) ||
+                v.Otsikko.Contains(hakusana, StringComparison.OrdinalIgnoreCase));
+
+    private void LisaaViite()
+    {
+        if (string.IsNullOrWhiteSpace(uusiAvain) || string.IsNullOrWhiteSpace(uusiOtsikko))
+            return;
+
+        viitteet.Add(new MockViite(
+            seuraavaId++,
+            uusiAvain.Trim(),
+            uusiTyyppi,
+            uudetTekijat.Trim(),
+            uusiOtsikko.Trim(),
+            uusiVuosi
+        ));
+
+        uusiAvain = "";
+        uudetTekijat = "";
+        uusiOtsikko = "";
+    }
+
+    private void AloitaMuokkaus(MockViite viite)
+    {
+        muokattavaId = viite.Id;
+        muokkausAvain = viite.Avain;
+        muokkausTyyppi = viite.Tyyppi;
+        muokkausTekijat = viite.Tekijat;
+        muokkausOtsikko = viite.Otsikko;
+        muokkausVuosi = viite.Vuosi;
+    }
+
+    private void TallennaMuokkaus(int id)
+    {
+        var indeksi = viitteet.FindIndex(v => v.Id == id);
+        if (indeksi == -1 || string.IsNullOrWhiteSpace(muokkausAvain) || string.IsNullOrWhiteSpace(muokkausOtsikko))
+            return;
+
+        viitteet[indeksi] = new MockViite(
+            id,
+            muokkausAvain.Trim(),
+            muokkausTyyppi,
+            muokkausTekijat.Trim(),
+            muokkausOtsikko.Trim(),
+            muokkausVuosi
+        );
+
+        muokattavaId = null;
+    }
+
+    private void PeruutaMuokkaus()
+    {
+        muokattavaId = null;
+    }
+
+    private void PoistaViite(int id)
+    {
+        viitteet.RemoveAll(v => v.Id == id);
+        if (muokattavaId == id)
+            muokattavaId = null;
+    }
+
+    private record MockViite(int Id, string Avain, string Tyyppi, string Tekijat, string Otsikko, int Vuosi);
+}
