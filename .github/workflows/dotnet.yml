@@ -25,10 +25,10 @@ jobs:
         run: dotnet restore
 
       - name: Install CSharpier
-        run: dotnet tool install --global csharpier
+        run: dotnet tool install csharpier --tool-path ./.csharpier
 
       - name: Check formatting with CSharpier
-        run: dotnet csharpier --check .
+        run: ./.csharpier/csharpier --check .
 
       - name: Build
         run: dotnet build --no-restore
