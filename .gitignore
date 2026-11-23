@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 .direnv/
 database.db
 database.db.*
+
+// Generated references file
+references.bib
