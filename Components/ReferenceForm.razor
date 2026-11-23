@@ -1,0 +1,171 @@
+@using System.ComponentModel.DataAnnotations
+@using System.Linq
+@using Microsoft.AspNetCore.Mvc.ModelBinding
+@inject ILogger<ReferenceForm> Logger
+<!-- Lomake viitteiden luomiseen. -->
+
+
+<h2 class="mt-4">Add reference </h2>
+<div class="formdiv">
+  <EditForm Model="Model" OnValidSubmit="HandleSubmit" FormName="ReferenceForm">
+    <AntiforgeryToken />
+    <div class="reference-form">
+      <label for="type">Type: </label>
+      <input type="text" name="type" id="type" required />
+    </div>
+    <fieldset>
+      <legend>Add authors</legend>
+      <div class="reference-form">
+        <label for="authorFirstName">First Name: </label>
+        <input type="text" @bind-value="_authorFirstName" name="authorFirstName" id="authorFirstName" />
+        <label for="authorLastName">Surname: </label>
+        <input type="text" @bind-value="_authorLastName" name="authorLastName" id="authauthorLastName" />
+        
+      </div>
+      <button type="button" @onclick="SaveAuthorToForm">Add author</button>
+    </fieldset>
+    
+    <div class="reference-form">
+      <fieldset>
+        <datalist id="bibtex-standard-fields">
+          <!-- Standard fields from https://www.bibtex.org/Format/#standard-fields -->
+          <option value="address"></option>
+          <option value="annote"></option>
+          <option value="booktitle"></option>
+          <option value="chapter"></option>
+          <option value="crossref"></option>
+          <option value="edition"></option>
+          <option value="editor"></option>
+          <option value="howpublished"></option>
+          <option value="institution"></option>
+          <option value="journal"></option>
+          <option value="key"></option>
+          <option value="month"></option>
+          <option value="note"></option>
+          <option value="number"></option>
+          <option value="organization"></option>
+          <option value="pages"></option>
+          <option value="publisher"></option>
+          <option value="school"></option>
+          <option value="series"></option>
+          <option value="title"></option>
+          <option value="volume"></option>
+          <option value="year"></option>
+          <!-- Other widely used fields -->
+          <option value="doi"></option>
+          <option value="url"></option>
+          <option value="isbn"></option>
+          <option value="issn"></option>
+          <option value="eprint"></option>
+          <option value="urldate"></option>
+
+        </datalist>
+        <div>
+          <legend>Add new field</legend>
+          <label for="addField">New field: </label>
+          <input list="bibtex-standard-fields" name="addField" id="addField"  @bind-value="_fieldName"/>
+          <label for="addFieldValue">Value: </label>
+          <input type="text" name="addFieldValue" id="addFieldValue" @bind-value="_fieldValue"/>
+        </div>
+        <button type="button" @onclick="SaveFieldToForm">Add field</button>
+      </fieldset>
+    </div>
+    <div class="reference-form">
+      <input type="submit" value="Add reference" />
+    </div>
+  </EditForm>
+</div>
+
+<p>@test</p>
+@if (Model?.Authors != null && Model.Authors.Count > 0)
+{
+  <p><strong>Added authors:</strong></p>
+  @for (int i = 0; i < Model.Authors.Count; i++)
+  {
+      <p>@Model.Authors[i].firstName @Model.Authors[i].surname</p>
+  }
+}
+
+
+@if (Model?.Fields != null && Model.Fields.ToList().Count > 0)
+{
+  <p><strong>Added fields:</strong></p>
+  @foreach (string key in Model.Fields.Keys)
+  {
+      <p><strong>Field:</strong> @key, <strong>Value:</strong> @GetValueFromField(key)</p>
+  }
+}
+
+
+@code {
+
+  [SupplyParameterFromForm]
+  private Reference? Model { get; set; }
+  protected override void OnInitialized() => Model ??= new();
+
+  private string _authorFirstName = string.Empty;
+  private string _authorLastName = string.Empty;
+
+  private string _fieldName = string.Empty;
+  private string _fieldValue = string.Empty;
+
+  private String test = "";
+  private void HandleSubmit()
+  {
+    test = "Submit painettu, näytetään tietoa lisätystä lähteestä tulevaisuudessa";
+    if (Model == null) return;
+    Model.Type = String.Empty;
+    Model.Authors = new List<(string, string)>();
+    Model.Fields = new Dictionary<string, string>();
+  }
+
+  private void SaveAuthorToForm()
+  {
+    // Save name into form
+    Model?.Authors.Add((_authorFirstName.Trim(), _authorLastName.Trim()));
+
+    _authorFirstName = string.Empty;
+    _authorLastName = string.Empty;
+
+
+  }
+
+  private void SaveFieldToForm()
+  {
+    if (Model == null) return;
+    string fname = _fieldName.Trim();
+    string fvalue = _fieldValue.Trim();
+
+    if (fname.Length < 3 || fvalue.Length < 3) return;
+
+    string? value;
+    if (Model.Fields.TryGetValue(fname, out value))
+    {
+      return;
+    }
+    Model?.Fields.Add(fname, fvalue);
+
+    _fieldName = string.Empty;
+    _fieldValue = string.Empty;
+  }
+
+  private string? GetValueFromField(string field)
+  {
+    string? value = "";
+    Model?.Fields.TryGetValue(field, out value);
+
+    return value;
+  }
+
+    public class Reference
+    {
+        [Required]
+        public string? Type { get; set; }
+        public List<(string firstName, string surname)> Authors { get; set; } = new List<(string, string)>();
+
+        public Dictionary<String, String> Fields = new Dictionary<string, string>();
+        
+    }
+
+    
+}
