@@ -94,7 +94,7 @@ public record Reference(
     [BibTeXOptionalAttribute]
     public String? url { get; set; }
 
-    internal static PropertyInfo[] GetBibTeXProperties()
+    public static PropertyInfo[] GetBibTeXProperties()
     {
         return typeof(Reference)
             .GetProperties()
