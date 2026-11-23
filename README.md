@@ -3,3 +3,4 @@
 Backlog
 https://docs.google.com/spreadsheets/d/1KE2dFqVVBGNNGbfewPiMjXgGZsPpuXjqI6NuIx-8sjQ/edit?usp=sharing
 
+[![.NET](https://github.com/Kirottu/miniprojekti/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Kirottu/miniprojekti/actions/workflows/dotnet.yml)
