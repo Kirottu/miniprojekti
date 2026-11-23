@@ -19,7 +19,9 @@ public abstract class DatabaseTestBase : IDisposable
         using (var conn = new SqliteConnection(connectionString))
         {
             conn.Open();
-            var schema = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "sql", "schema.sql"));
+            var schema = File.ReadAllText(
+                Path.Combine(AppContext.BaseDirectory, "sql", "schema.sql")
+            );
             foreach (var statement in schema.Split(';', StringSplitOptions.RemoveEmptyEntries))
             {
                 using var cmd = new SqliteCommand(statement, conn);
@@ -28,10 +30,12 @@ public abstract class DatabaseTestBase : IDisposable
         }
 
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:Database"] = connectionString,
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:Database"] = connectionString,
+                }
+            )
             .Build();
 
         Database = new Database(config);
@@ -114,9 +118,27 @@ public class SaveReferenceTests : DatabaseTestBase
 
         // Raw database state
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
-        Assert.Equal("article", await Select("SELECT entrytype FROM citations WHERE id = $id", ("$id", reference.id.ToString())));
-        Assert.Equal("cite-1", await Select("SELECT citekey FROM citations WHERE id = $id", ("$id", reference.id.ToString())));
-        Assert.Equal("user-1", await Select("SELECT user FROM citations WHERE id = $id", ("$id", reference.id.ToString())));
+        Assert.Equal(
+            "article",
+            await Select(
+                "SELECT entrytype FROM citations WHERE id = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
+        Assert.Equal(
+            "cite-1",
+            await Select(
+                "SELECT citekey FROM citations WHERE id = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
+        Assert.Equal(
+            "user-1",
+            await Select(
+                "SELECT user FROM citations WHERE id = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
 
         Assert.Equal(2, await Count("SELECT COUNT(*) FROM authors"));
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM authors WHERE author = 'Smith, John'"));
@@ -162,11 +184,23 @@ public class SaveReferenceTests : DatabaseTestBase
         await Database.SaveReference(reference);
 
         // Raw database state: every field must be present with its value
-        Assert.Equal("A title", await Select("SELECT title FROM citations WHERE id = $id", ("$id", reference.id.ToString())));
+        Assert.Equal(
+            "A title",
+            await Select(
+                "SELECT title FROM citations WHERE id = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
         foreach (var property in Reference.GetBibTeXProperties())
         {
             var expected = property.GetValue(reference)!;
-            Assert.Equal(expected, await Select($"SELECT {property.Name} FROM citations WHERE id = $id", ("$id", reference.id.ToString())));
+            Assert.Equal(
+                expected,
+                await Select(
+                    $"SELECT {property.Name} FROM citations WHERE id = $id",
+                    ("$id", reference.id.ToString())
+                )
+            );
         }
     }
 
@@ -180,7 +214,12 @@ public class SaveReferenceTests : DatabaseTestBase
         // Raw database state: no optional field may be set
         foreach (var property in Reference.GetBibTeXProperties())
         {
-            Assert.Null(await Select($"SELECT {property.Name} FROM citations WHERE id = $id", ("$id", reference.id.ToString())));
+            Assert.Null(
+                await Select(
+                    $"SELECT {property.Name} FROM citations WHERE id = $id",
+                    ("$id", reference.id.ToString())
+                )
+            );
         }
         Assert.Equal(0, await Count("SELECT COUNT(*) FROM authors"));
     }
@@ -214,10 +253,19 @@ public class SaveReferenceTests : DatabaseTestBase
 
         // Raw database state: row is replaced, not duplicated
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
-        Assert.Equal("new-citekey", await Select("SELECT citekey FROM citations WHERE id = $id", ("$id", id.ToString())));
-        Assert.Equal("New title", await Select("SELECT title FROM citations WHERE id = $id", ("$id", id.ToString())));
+        Assert.Equal(
+            "new-citekey",
+            await Select("SELECT citekey FROM citations WHERE id = $id", ("$id", id.ToString()))
+        );
+        Assert.Equal(
+            "New title",
+            await Select("SELECT title FROM citations WHERE id = $id", ("$id", id.ToString()))
+        );
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM authors"));
-        Assert.Equal("Doe, Jane", await Select("SELECT author FROM authors WHERE reference = $id", ("$id", id.ToString())));
+        Assert.Equal(
+            "Doe, Jane",
+            await Select("SELECT author FROM authors WHERE reference = $id", ("$id", id.ToString()))
+        );
     }
 }
 

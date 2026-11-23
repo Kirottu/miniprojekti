@@ -22,6 +22,4 @@ public class BibManager
 
         _output.Flush();
     }
-    
 }
-
