@@ -117,15 +117,22 @@ public class Database
         using var c = await Conn();
         using var tx = await c.BeginTransactionAsync();
 
-        using (var cmd = c.CreateCommand())
-        {
-            cmd.CommandText =
-                "INSERT INTO users (id, name) VALUES ($id, $name) ON CONFLICT(id) DO UPDATE SET name = $name";
-            cmd.Parameters.AddWithValue("$id", user.id.ToString());
-            cmd.Parameters.AddWithValue("$name", user.name);
+        await ExecuteAsync(
+            c,
+            "INSERT INTO users (id, name) VALUES ($id, $name) ON CONFLICT(id) DO UPDATE SET name = $name",
+            ("$id", user.id.ToString()),
+            ("$name", user.name)
+        );
 
-            await cmd.ExecuteNonQueryAsync();
-        }
+        await tx.CommitAsync();
+    }
+
+    public async Task DeleteUser(String id)
+    {
+        using var c = await Conn();
+        using var tx = await c.BeginTransactionAsync();
+
+        await ExecuteAsync(c, "DELETE FROM users WHERE id = $id", ("$id", id));
 
         await tx.CommitAsync();
     }
@@ -135,20 +142,15 @@ public class Database
     {
         using var c = await Conn();
 
-        using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT name FROM users WHERE id = $id";
-        cmd.Parameters.AddWithValue("$id", id);
+        var name = await ScalarAsync(c, "SELECT name FROM users WHERE id = $id", ("$id", id));
 
-        return new User(id, (String)(await cmd.ExecuteScalarAsync())!);
+        return new User(id, name!);
     }
 
     public async Task<List<Reference>> GetReferences(String userId)
     {
         using var c = await Conn();
-        using var cmd = c.CreateCommand();
-
-        cmd.CommandText = "SELECT id, entrytype, citekey FROM citations WHERE user = $user";
-        cmd.Parameters.AddWithValue("$user", userId);
+        using var cmd = Cmd(c, "SELECT id, entrytype, citekey FROM citations WHERE user = $user", ("$user", userId));
 
         using var reader = await cmd.ExecuteReaderAsync();
 
@@ -164,18 +166,16 @@ public class Database
             );
             foreach (var property in Reference.GetBibTeXProperties())
             {
-                using var fieldCmd = c.CreateCommand();
-                fieldCmd.CommandText = $"SELECT {property.Name} FROM citations WHERE id = $id";
-                fieldCmd.Parameters.AddWithValue("$id", reference.id.ToString());
+                var res = await ScalarAsync(
+                    c,
+                    $"SELECT {property.Name} FROM citations WHERE id = $id",
+                    ("$id", reference.id.ToString())
+                );
 
-                var res = await fieldCmd.ExecuteScalarAsync();
-
-                if (res == DBNull.Value)
+                if (res is not null)
                 {
-                    continue;
+                    property.SetValue(reference, res);
                 }
-
-                property.SetValue(reference, res);
             }
             references.Add(reference);
         }
@@ -191,46 +191,86 @@ public class Database
         using var tx = await c.BeginTransactionAsync();
 
         // Insert the always required fields first
-        using (var cmd = c.CreateCommand())
-        {
-            cmd.CommandText =
-                "INSERT OR REPLACE INTO citations (id, user, entrytype, citekey) VALUES ($id, $user, $entrytype, $citekey)";
-
-            cmd.Parameters.AddWithValue("$id", reference.id.ToString());
-            cmd.Parameters.AddWithValue("$user", reference.user);
-            cmd.Parameters.AddWithValue("$entrytype", reference.entrytype);
-            cmd.Parameters.AddWithValue("$citekey", reference.citekey);
-
-            await cmd.ExecuteNonQueryAsync();
-        }
+        await ExecuteAsync(
+            c,
+            "INSERT OR REPLACE INTO citations (id, user, entrytype, citekey) VALUES ($id, $user, $entrytype, $citekey)",
+            ("$id", reference.id.ToString()),
+            ("$user", reference.user),
+            ("$entrytype", reference.entrytype),
+            ("$citekey", reference.citekey)
+        );
 
         foreach (var property in Reference.GetBibTeXProperties())
         {
             var value = property.GetValue(reference);
-            if (value == null)
+            if (value is null)
             {
                 continue;
             }
-            using var cmd = c.CreateCommand();
-            cmd.CommandText =
-                $"UPDATE citations SET {property.Name} = ${property.Name} WHERE id = $id";
-            cmd.Parameters.AddWithValue("$id", reference.id.ToString());
-            cmd.Parameters.AddWithValue($"${property.Name}", value);
-
-            await cmd.ExecuteNonQueryAsync();
+            await ExecuteAsync(
+                c,
+                $"UPDATE citations SET {property.Name} = ${property.Name} WHERE id = $id",
+                ("$id", reference.id.ToString()),
+                ("$" + property.Name, value)
+            );
         }
 
         foreach (var author in reference.authors ?? [])
         {
-            using var cmd = c.CreateCommand();
-            cmd.CommandText = "INSERT INTO authors (reference, author) VALUES ($id, $author)";
-            cmd.Parameters.AddWithValue("$id", reference.id.ToString());
-            cmd.Parameters.AddWithValue("$author", author);
-
-            await cmd.ExecuteNonQueryAsync();
+            await ExecuteAsync(
+                c,
+                "INSERT INTO authors (reference, author) VALUES ($id, $author)",
+                ("$id", reference.id.ToString()),
+                ("$author", author)
+            );
         }
 
         await tx.CommitAsync();
+    }
+
+    public async Task DeleteReference(String id)
+    {
+        using var c = await Conn();
+        using var tx = await c.BeginTransactionAsync();
+
+        await ExecuteAsync(c, "DELETE FROM citations WHERE id = $id", ("$id", id));
+
+        await tx.CommitAsync();
+    }
+
+    /// Builds a parameterized command on the given connection without executing it.
+    private SqliteCommand Cmd(SqliteConnection c, string sql, params (string, object?)[] parameters)
+    {
+        var cmd = c.CreateCommand();
+        cmd.CommandText = sql;
+        foreach (var (name, value) in parameters)
+        {
+            cmd.Parameters.AddWithValue(name, value);
+        }
+        return cmd;
+    }
+
+    /// Executes a non-query statement and returns nothing.
+    private async Task ExecuteAsync(
+        SqliteConnection c,
+        string sql,
+        params (string, object?)[] parameters
+    )
+    {
+        using var cmd = Cmd(c, sql, parameters);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    /// Executes a query expected to return a single value, or null when no row matches.
+    private async Task<string?> ScalarAsync(
+        SqliteConnection c,
+        string sql,
+        params (string, object?)[] parameters
+    )
+    {
+        using var cmd = Cmd(c, sql, parameters);
+        var result = await cmd.ExecuteScalarAsync();
+        return result is DBNull ? null : result?.ToString();
     }
 
     private async Task<SqliteConnection> Conn()
