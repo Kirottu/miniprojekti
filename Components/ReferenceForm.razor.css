@@ -17,3 +17,24 @@ fieldset {
   border-radius: 1rem;
   color: black;
 }
+
+.title {
+  min-width: 100%;
+}
+
+input {
+  margin: 5px;
+}
+
+
+.input-validation-error {
+    border-color: #dc3545 !important;
+    background-color: #fff5f5;
+}
+
+.field-validation-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
