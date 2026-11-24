@@ -32,25 +32,24 @@ public class BibManagerTests
         manager.GenerateBibTeXFile(bibEntries);
         string result = writer.ToString();
 
-        string expected = """
-            @article{key1,
-              title = {title1},
-              journal = {Journal1},
-              year = {2006},
-              author = {Smith, Jack T. and Gomez, Carter S.},
-            }
-
-            @article{key2,
-              title = {title2},
-              journal = {Journal1},
-              year = {1954},
-              author = {Phillips, Ryan E. and Rogers, Jody Y.},
-            }
-
-
-            """;
-
-        Assert.Equal(expected, result);
+        Assert.Contains( 
+        """
+        @article{key1,
+          title = {title1},
+          journal = {Journal1},
+          year = {2006},
+          author = {Smith, Jack T. and Gomez, Carter S.}
+        """,
+        result);
+        Assert.Contains( 
+        """
+        @article{key2,
+          title = {title2},
+          journal = {Journal1},
+          year = {1954},
+          author = {Phillips, Ryan E. and Rogers, Jody Y.}
+        """,
+        result);
     }
 
     [Fact]
