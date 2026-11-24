@@ -1,5 +1,6 @@
 ﻿@page "/"
 @rendermode InteractiveServer
+@inject Database Db
 
 <h1>References</h1>
 <p>View, filter, add, and edit mock references.</p>
@@ -117,12 +118,24 @@
     private string muokkausOtsikko = "";
     private int muokkausVuosi = 2026;
 
-    private List<MockViite> viitteet =
-    [
-        new(1, "VPL11", "inproceedings", "Vihavainen, Arto and Paksula, Matti and Luukkainen, Matti", "Extreme Apprenticeship Method in Teaching Programming for Beginners.", 2011),
-        new(2, "CBH91", "article", "Allan Collins and John Seely Brown and Ann Holum", "Cognitive apprenticeship: making thinking visible", 1991),
-        new(3, "Martin09", "book", "Martin, Robert", "Clean Code: A Handbook of Agile Software Craftsmanship", 2008)
-    ];
+    private List<MockViite> viitteet = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tietokannanViitteet = await Db.GetReferences("test");
+
+        viitteet = tietokannanViitteet.Select((v, index) =>
+            new MockViite(
+                index + 1,
+                v.citekey,
+                v.entrytype,
+                string.Join(" and ", v.authors ?? []),
+                v.title ?? "",
+                int.TryParse(v.year, out var year) ? year : 0
+            )
+        ).ToList();
+        seuraavaId = viitteet.Count + 1;
+    }
 
     private IEnumerable<MockViite> SuodatetutViitteet =>
         string.IsNullOrWhiteSpace(hakusana)

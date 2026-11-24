@@ -181,6 +181,22 @@ public class Database
                     property.SetValue(reference, res);
                 }
             }
+
+            using var authorCmd = Cmd(
+                c,
+                "SELECT author FROM authors WHERE reference = $id",
+                ("$id", reference.id.ToString())
+            );
+
+            using var authorReader = await authorCmd.ExecuteReaderAsync();
+
+            reference.authors = [];
+
+            while (await authorReader.ReadAsync())
+            {
+                reference.authors.Add(authorReader.GetString(0));
+            }
+
             references.Add(reference);
         }
 
