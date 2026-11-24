@@ -150,7 +150,11 @@ public class Database
     public async Task<List<Reference>> GetReferences(String userId)
     {
         using var c = await Conn();
-        using var cmd = Cmd(c, "SELECT id, entrytype, citekey FROM citations WHERE user = $user", ("$user", userId));
+        using var cmd = Cmd(
+            c,
+            "SELECT id, entrytype, citekey FROM citations WHERE user = $user",
+            ("$user", userId)
+        );
 
         using var reader = await cmd.ExecuteReaderAsync();
 
@@ -172,7 +176,7 @@ public class Database
                     ("$id", reference.id.ToString())
                 );
 
-                if (res is not null)
+                if (res != null)
                 {
                     property.SetValue(reference, res);
                 }

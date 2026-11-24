@@ -6,15 +6,14 @@ using Xunit;
 /// and gives every test its own isolated database.
 public abstract class DatabaseTestBase : IDisposable
 {
-    protected readonly Database Database;
-    protected readonly string ConnectionString;
-    private readonly string _path;
+    protected readonly Database database;
+    protected readonly string connectionString;
+    private readonly string dbPath;
 
     protected DatabaseTestBase()
     {
-        _path = Path.Combine(Path.GetTempPath(), $"miniprojekti-test-{Guid.NewGuid():N}.db");
-        var connectionString = $"DataSource={_path}";
-        ConnectionString = connectionString;
+        dbPath = Path.Combine(Path.GetTempPath(), $"miniprojekti-test-{Guid.NewGuid():N}.db");
+        connectionString = $"DataSource={dbPath}";
 
         using (var conn = new SqliteConnection(connectionString))
         {
@@ -38,19 +37,14 @@ public abstract class DatabaseTestBase : IDisposable
             )
             .Build();
 
-        Database = new Database(config);
+        database = new Database(config);
     }
 
     public void Dispose()
     {
-        string[] suffixes = [".db", ".db-wal", ".db-shm"];
-        foreach (var suffix in suffixes)
+        if (File.Exists(dbPath))
         {
-            var p = _path + suffix;
-            if (File.Exists(p))
-            {
-                File.Delete(p);
-            }
+            File.Delete(dbPath);
         }
     }
 
@@ -58,7 +52,7 @@ public abstract class DatabaseTestBase : IDisposable
     /// the Database class entirely to inspect the raw database state.
     protected async Task<string?> Select(string sql, params (string, object?)[] parameters)
     {
-        using var c = new SqliteConnection(ConnectionString);
+        using var c = new SqliteConnection(connectionString);
         await c.OpenAsync();
         using var cmd = c.CreateCommand();
         cmd.CommandText = sql;
@@ -74,6 +68,11 @@ public abstract class DatabaseTestBase : IDisposable
     {
         return int.Parse((await Select(sql))!);
     }
+
+    protected async Task<int> Count(string sql, params (string, object?)[] parameters)
+    {
+        return int.Parse((await Select(sql, parameters))!);
+    }
 }
 
 public class SaveUserTests : DatabaseTestBase
@@ -82,9 +81,9 @@ public class SaveUserTests : DatabaseTestBase
     public async Task SaveUser_StoresAndRetrievesUser()
     {
         var user = new User("user-1", "Alice");
-        await Database.SaveUser(user);
+        await database.SaveUser(user);
 
-        var fetched = await Database.GetUser(user.id);
+        var fetched = await database.GetUser(user.id);
         Assert.Equal(user.name, fetched.name);
 
         // Raw database state
@@ -96,13 +95,13 @@ public class SaveUserTests : DatabaseTestBase
     public async Task SaveUser_SavingExistingUserAgain_UpdatesName()
     {
         var user = new User("user-1", "Alice");
-        await Database.SaveUser(user);
-        await Database.SaveUser(new User("user-1", "Alice Cooper"));
+        await database.SaveUser(user);
+        await database.SaveUser(new User("user-1", "Alice Cooper"));
 
         // The upsert must not create a second row
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM users"));
         Assert.Equal("Alice Cooper", await Select("SELECT name FROM users WHERE id = 'user-1'"));
-        Assert.Equal("Alice Cooper", (await Database.GetUser("user-1")).name);
+        Assert.Equal("Alice Cooper", (await database.GetUser("user-1")).name);
     }
 }
 
@@ -113,8 +112,8 @@ public class SaveReferenceTests : DatabaseTestBase
     {
         var reference = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-1");
         reference.authors = ["Smith, John", "Doe, Jane"];
-        await Database.SaveUser(new User("user-1", "Alice"));
-        await Database.SaveReference(reference);
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveReference(reference);
 
         // Raw database state
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
@@ -180,8 +179,8 @@ public class SaveReferenceTests : DatabaseTestBase
     public async Task SaveReference_StoresAllBibTeXFields()
     {
         var reference = FullReference();
-        await Database.SaveUser(new User("user-1", "Alice"));
-        await Database.SaveReference(reference);
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveReference(reference);
 
         // Raw database state: every field must be present with its value
         Assert.Equal(
@@ -208,8 +207,8 @@ public class SaveReferenceTests : DatabaseTestBase
     public async Task SaveReference_LeavesUnsetFieldsNull()
     {
         var reference = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-1");
-        await Database.SaveUser(new User("user-1", "Alice"));
-        await Database.SaveReference(reference);
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveReference(reference);
 
         // Raw database state: no optional field may be set
         foreach (var property in Reference.GetBibTeXProperties())
@@ -229,7 +228,7 @@ public class SaveReferenceTests : DatabaseTestBase
     {
         var reference = new Reference(Guid.CreateVersion7(), "ghost", "article", "cite-1");
 
-        await Assert.ThrowsAsync<SqliteException>(() => Database.SaveReference(reference));
+        await Assert.ThrowsAsync<SqliteException>(() => database.SaveReference(reference));
 
         // The whole transaction must have been rolled back
         Assert.Equal(0, await Count("SELECT COUNT(*) FROM citations"));
@@ -243,13 +242,13 @@ public class SaveReferenceTests : DatabaseTestBase
         var first = new Reference(id, "user-1", "article", "cite-1");
         first.authors = ["Smith, John"];
         first.title = "Old title";
-        await Database.SaveUser(new User("user-1", "Alice"));
-        await Database.SaveReference(first);
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveReference(first);
 
         var second = new Reference(id, "user-1", "article", "new-citekey");
         second.authors = ["Doe, Jane"];
         second.title = "New title";
-        await Database.SaveReference(second);
+        await database.SaveReference(second);
 
         // Raw database state: row is replaced, not duplicated
         Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
@@ -283,13 +282,13 @@ public class GetReferencesTests : DatabaseTestBase
     [Fact]
     public async Task GetReferences_ReturnsOnlyTheUsersReferences()
     {
-        await Database.SaveUser(new User("user-1", "Alice"));
-        await Database.SaveUser(new User("user-2", "Bob"));
-        await Database.SaveReference(MakeReference("user-1", "cite-a", "Title A"));
-        await Database.SaveReference(MakeReference("user-1", "cite-b", "Title B"));
-        await Database.SaveReference(MakeReference("user-2", "cite-c", "Title C"));
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveUser(new User("user-2", "Bob"));
+        await database.SaveReference(MakeReference("user-1", "cite-a", "Title A"));
+        await database.SaveReference(MakeReference("user-1", "cite-b", "Title B"));
+        await database.SaveReference(MakeReference("user-2", "cite-c", "Title C"));
 
-        var references = await Database.GetReferences("user-1");
+        var references = await database.GetReferences("user-1");
 
         Assert.Equal(2, references.Count);
         Assert.All(references, r => Assert.Equal("user-1", r.user));
@@ -302,10 +301,10 @@ public class GetReferencesTests : DatabaseTestBase
     public async Task GetReferences_FillsStoredBibTeXFields()
     {
         var reference = MakeReference("user-1", "cite-a", "Title A");
-        await Database.SaveUser(new User("user-1", "Alice"));
-        await Database.SaveReference(reference);
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveReference(reference);
 
-        var references = await Database.GetReferences("user-1");
+        var references = await database.GetReferences("user-1");
 
         var fetched = Assert.Single(references);
         Assert.Equal(reference.id, fetched.id);
@@ -319,7 +318,7 @@ public class GetReferencesTests : DatabaseTestBase
     [Fact]
     public async Task GetReferences_UnknownUser_ReturnsEmptyList()
     {
-        Assert.Empty(await Database.GetReferences("ghost"));
+        Assert.Empty(await database.GetReferences("ghost"));
     }
 }
 
@@ -328,7 +327,176 @@ public class GetUserTests : DatabaseTestBase
     [Fact]
     public async Task GetUser_UnknownUser_HasNullName()
     {
-        var user = await Database.GetUser("ghost");
+        var user = await database.GetUser("ghost");
         Assert.Null(user.name);
+    }
+}
+
+public class DeleteUserTests : DatabaseTestBase
+{
+    [Fact]
+    public async Task DeleteUser_RemovesUserAndTheirReferences()
+    {
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveUser(new User("user-2", "Bob"));
+
+        var reference = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-a");
+        reference.authors = ["Smith, John"];
+        reference.title = "Title A";
+        await database.SaveReference(reference);
+
+        await database.DeleteUser("user-1");
+
+        // The user row and everything it owned must be gone
+        Assert.Null(await Select("SELECT name FROM users WHERE id = 'user-1'"));
+        Assert.Equal(0, await Count("SELECT COUNT(*) FROM citations WHERE user = 'user-1'"));
+        Assert.Equal(
+            0,
+            await Count(
+                "SELECT COUNT(*) FROM authors WHERE reference = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
+    }
+
+    [Fact]
+    public async Task DeleteUser_LeavesNoOrphanRows()
+    {
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.SaveUser(new User("user-2", "Bob"));
+
+        // user-1 owns two references with authors; user-2 keeps one
+        var refA = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-a");
+        refA.authors = ["Smith, John"];
+        refA.title = "Title A";
+        await database.SaveReference(refA);
+
+        var refB = new Reference(Guid.CreateVersion7(), "user-1", "book", "cite-b");
+        refB.authors = ["Doe, Jane"];
+        refB.title = "Title B";
+        await database.SaveReference(refB);
+
+        var refC = new Reference(Guid.CreateVersion7(), "user-2", "article", "cite-c");
+        refC.authors = ["Roe, Robert"];
+        await database.SaveReference(refC);
+
+        await database.DeleteUser("user-1");
+
+        // user-2 and its data must survive untouched
+        Assert.Equal("Bob", await Select("SELECT name FROM users WHERE id = 'user-2'"));
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM authors"));
+        Assert.Equal(
+            1,
+            await Count(
+                "SELECT COUNT(*) FROM authors WHERE reference = $id",
+                ("$id", refC.id.ToString())
+            )
+        );
+
+        // No orphan rows: every author row must still point at a live citation
+        Assert.Equal(
+            0,
+            await Count(
+                "SELECT COUNT(*) FROM authors WHERE reference NOT IN (SELECT id FROM citations)"
+            )
+        );
+        Assert.Equal(
+            0,
+            await Count("SELECT COUNT(*) FROM citations WHERE user NOT IN (SELECT id FROM users)")
+        );
+    }
+
+    [Fact]
+    public async Task DeleteUser_UnknownUser_IsANoOp()
+    {
+        await database.SaveUser(new User("user-1", "Alice"));
+        await database.DeleteUser("ghost");
+
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM users"));
+        Assert.Equal("Alice", await Select("SELECT name FROM users WHERE id = 'user-1'"));
+    }
+}
+
+public class DeleteReferenceTests : DatabaseTestBase
+{
+    [Fact]
+    public async Task DeleteReference_RemovesReferenceAndItsAuthors()
+    {
+        await database.SaveUser(new User("user-1", "Alice"));
+        var reference = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-1");
+        reference.authors = ["Smith, John", "Doe, Jane"];
+        reference.title = "A title";
+        await database.SaveReference(reference);
+
+        await database.DeleteReference(reference.id.ToString());
+
+        // The citation row and all of its author rows must be gone
+        Assert.Equal(
+            0,
+            await Count(
+                "SELECT COUNT(*) FROM citations WHERE id = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
+        Assert.Equal(
+            0,
+            await Count(
+                "SELECT COUNT(*) FROM authors WHERE reference = $id",
+                ("$id", reference.id.ToString())
+            )
+        );
+    }
+
+    [Fact]
+    public async Task DeleteReference_LeavesNoOrphanRows()
+    {
+        await database.SaveUser(new User("user-1", "Alice"));
+
+        var refA = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-a");
+        refA.authors = ["Smith, John"];
+        await database.SaveReference(refA);
+
+        var refB = new Reference(Guid.CreateVersion7(), "user-1", "book", "cite-b");
+        refB.authors = ["Doe, Jane"];
+        await database.SaveReference(refB);
+
+        await database.DeleteReference(refA.id.ToString());
+
+        // The remaining reference and its author must survive
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM authors"));
+        Assert.Equal(
+            "Doe, Jane",
+            await Select(
+                "SELECT author FROM authors WHERE reference = $id",
+                ("$id", refB.id.ToString())
+            )
+        );
+
+        // The owner must not be deleted along with the reference
+        Assert.Equal("Alice", await Select("SELECT name FROM users WHERE id = 'user-1'"));
+
+        // No orphan rows: every author row must still point at a live citation
+        Assert.Equal(
+            0,
+            await Count(
+                "SELECT COUNT(*) FROM authors WHERE reference NOT IN (SELECT id FROM citations)"
+            )
+        );
+    }
+
+    [Fact]
+    public async Task DeleteReference_UnknownReference_IsANoOp()
+    {
+        await database.SaveUser(new User("user-1", "Alice"));
+        var reference = new Reference(Guid.CreateVersion7(), "user-1", "article", "cite-1");
+        reference.authors = ["Smith, John"];
+        await database.SaveReference(reference);
+
+        await database.DeleteReference(Guid.NewGuid().ToString());
+
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM citations"));
+        Assert.Equal(1, await Count("SELECT COUNT(*) FROM authors"));
     }
 }
