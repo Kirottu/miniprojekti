@@ -4,7 +4,6 @@ using BibSharp.Utilities;
 
 // https://www.nuget.org/packages/BibSharp
 
-
 public class BibManager
 {
     private readonly TextWriter _output;
@@ -16,9 +15,9 @@ public class BibManager
 
     /// <summary>
     /// Writes to BibManager's TextWriter a BibTeX formatted output.
-    /// 
+    ///
     /// Example class usage:
-    /// 
+    ///
     /// using var writer = new StreamWriter("references.bib");
     /// BibManager manager = new BibManager(writer);
     /// List<BibEntry> bibEntries =
@@ -29,7 +28,7 @@ public class BibManager
     ///     new BibEntry(EntryType.Article){Key="key4", Title="title4", Journal="Journal2", Year=2014},
     /// ];
     /// manager.GenerateBibTeXFile(bibEntries);
-    /// 
+    ///
     /// </summary>
     /// <param name="bibEntries">List of bibtex references made using BibSharp</param>
     public void GenerateBibTeXFile(List<BibEntry> bibEntries)
@@ -42,7 +41,7 @@ public class BibManager
 
         _output.Flush();
     }
-    
+
     /// <summary>
     /// Fetches DOI entry and returns it as BibEntry or null. Fetch ends if it lasts longer than 10 seconds.
     /// </summary>
@@ -50,7 +49,8 @@ public class BibManager
     /// <returns></returns>
     public async Task<BibEntry?> FromDOI(string doiAddress)
     {
-        if (doiAddress == null || doiAddress=="") return null;
+        if (doiAddress == null || doiAddress == "")
+            return null;
 
         using var cts = new CancellationTokenSource();
         cts.CancelAfter(TimeSpan.FromSeconds(10));
