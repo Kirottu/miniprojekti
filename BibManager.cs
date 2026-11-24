@@ -29,7 +29,7 @@ public class BibManager
     /// manager.GenerateBibTeXFile(bibEntries);
     /// 
     /// </summary>
-    /// <param name="bibEntries"></param>
+    /// <param name="bibEntries">List of bibtex references made using BibSharp</param>
     public void GenerateBibTeXFile(List<BibEntry> bibEntries)
     {
         foreach (BibEntry bibEntry in bibEntries)
