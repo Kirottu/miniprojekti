@@ -44,41 +44,48 @@ class Miniprojekti
             {
                 await db.SaveUser(new User("test", "test"));
 
-                await db.SaveReference(new Reference(
-                    Guid.Parse("11111111-1111-7111-8111-111111111111"),
-                    "test",
-                    "inproceedings",
-                    "VPL11"
-                )
-                {
-                    authors = ["Vihavainen, Arto", "Paksula, Matti", "Luukkainen, Matti"],
-                    title = "Extreme Apprenticeship Method in Teaching Programming for Beginners.",
-                    year = "2011"
-                });
+                await db.SaveReference(
+                    new Reference(
+                        Guid.Parse("11111111-1111-7111-8111-111111111111"),
+                        "test",
+                        "inproceedings",
+                        "VPL11"
+                    )
+                    {
+                        authors = ["Vihavainen, Arto", "Paksula, Matti", "Luukkainen, Matti"],
+                        title =
+                            "Extreme Apprenticeship Method in Teaching Programming for Beginners.",
+                        year = "2011",
+                    }
+                );
 
-                await db.SaveReference(new Reference(
-                    Guid.Parse("22222222-2222-7222-8222-222222222222"),
-                    "test",
-                    "article",
-                    "CBH91"
-                )
-                {
-                    authors = ["Allan Collins", "John Seely Brown", "Ann Holum"],
-                    title = "Cognitive apprenticeship: making thinking visible",
-                    year = "1991"
-                });
+                await db.SaveReference(
+                    new Reference(
+                        Guid.Parse("22222222-2222-7222-8222-222222222222"),
+                        "test",
+                        "article",
+                        "CBH91"
+                    )
+                    {
+                        authors = ["Allan Collins", "John Seely Brown", "Ann Holum"],
+                        title = "Cognitive apprenticeship: making thinking visible",
+                        year = "1991",
+                    }
+                );
 
-                await db.SaveReference(new Reference(
-                    Guid.Parse("33333333-3333-7333-8333-333333333333"),
-                    "test",
-                    "book",
-                    "Martin09"
-                )
-                {
-                    authors = ["Martin, Robert"],
-                    title = "Clean Code: A Handbook of Agile Software Craftsmanship",
-                    year = "2008"
-                });
+                await db.SaveReference(
+                    new Reference(
+                        Guid.Parse("33333333-3333-7333-8333-333333333333"),
+                        "test",
+                        "book",
+                        "Martin09"
+                    )
+                    {
+                        authors = ["Martin, Robert"],
+                        title = "Clean Code: A Handbook of Agile Software Craftsmanship",
+                        year = "2008",
+                    }
+                );
 
                 Console.WriteLine("Test references added to database.");
             }
