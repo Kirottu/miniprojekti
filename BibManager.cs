@@ -1,4 +1,6 @@
+using System.Numerics;
 using BibSharp;
+using BibSharp.Utilities;
 
 // https://www.nuget.org/packages/BibSharp
 
@@ -39,5 +41,20 @@ public class BibManager
         }
 
         _output.Flush();
+    }
+    
+    /// <summary>
+    /// Fetches DOI entry and returns it as BibEntry or null. Fetch ends if it lasts longer than 10 seconds.
+    /// </summary>
+    /// <param name="doiAddress"></param>
+    /// <returns></returns>
+    public async Task<BibEntry?> FromDOI(string doiAddress)
+    {
+        if (doiAddress == null || doiAddress=="") return null;
+
+        using var cts = new CancellationTokenSource();
+        cts.CancelAfter(TimeSpan.FromSeconds(10));
+        var entry = await BibEntry.FromDoiAsync(doiAddress, cts.Token);
+        return entry;
     }
 }
