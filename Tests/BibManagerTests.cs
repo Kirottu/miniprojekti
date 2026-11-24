@@ -17,7 +17,21 @@ public class BibManagerTests
         string result = writer.ToString();
 
         string expected = 
-            "@article{key1,\r\n  title = {title1},\r\n  journal = {Journal1},\r\n  year = {2006},\r\n}\r\n\r\n@article{key2,\r\n  title = {title2},\r\n  journal = {Journal1},\r\n  year = {1954},\r\n}\r\n\r\n";
+            """
+            @article{key1,
+              title = {title1},
+              journal = {Journal1},
+              year = {2006},
+            }
+
+            @article{key2,
+              title = {title2},
+              journal = {Journal1},
+              year = {1954},
+            }
+
+
+            """;
 
         Assert.Equal(expected, result);
     }
