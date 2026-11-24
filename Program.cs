@@ -15,15 +15,18 @@ class Miniprojekti
 
         builder.Services.AddControllers();
 
-        // Set WAL mode in Sqlite so that the DB is more resillient
+        var dbString = builder.Configuration.GetConnectionString("Database")!;
+        var path = dbString.Split('=')[1];
+
+        // Init DB if it doesn't exist
+        if (!File.Exists(path))
         {
-            using var c = new SqliteConnection(
-                builder.Configuration.GetConnectionString("Database")!
-            );
+            Console.WriteLine("Initializing DB...");
+            using var c = new SqliteConnection(dbString);
             c.Open();
             using (var p = c.CreateCommand())
             {
-                p.CommandText = "PRAGMA journal_mode=WAL;";
+                p.CommandText = File.ReadAllText("sql/schema.sql");
                 p.ExecuteNonQuery();
             }
         }
