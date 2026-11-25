@@ -1,6 +1,9 @@
 ﻿@page "/"
 @rendermode InteractiveServer
+@using BibSharp
+@using Microsoft.JSInterop
 @inject Database Db
+@inject IJSRuntime JS
 
 <h1>References</h1>
 <p>View, filter, add, and edit mock references.</p>
@@ -67,7 +70,9 @@
 <div class="mt-4">
     <h2>Export references</h2>
     <p>Export your references in BibTeX format for LaTeX.</p>
-    <button class="btn btn-primary" disabled>Export BibTeX</button>
+    <button class="btn btn-primary" @onclick="ExportBibTeX">
+        Export BibTeX
+    </button>
 </div>
 
 <h2 class="mt-4">Add mock references </h2>
@@ -217,6 +222,44 @@
         viitteet.RemoveAll(v => v.Id == id);
         if (muokattavaId == id)
             muokattavaId = null;
+    }
+
+    private async Task ExportBibTeX()
+    {
+        List<BibEntry> bibEntries = [];
+
+        foreach (var viite in viitteet)
+        {
+            var entryType = viite.Tyyppi switch
+            {
+                "book" => EntryType.Book,
+                "inproceedings" => EntryType.InProceedings,
+                _ => EntryType.Article
+            };
+
+            var entry = new BibEntry(entryType)
+            {
+                Key = viite.Avain,
+                Title = viite.Otsikko,
+                Year = viite.Vuosi
+            };
+
+            foreach (var author in viite.Tekijat.Split(
+                " and ", StringSplitOptions.RemoveEmptyEntries))
+            {
+                entry.AddAuthor(
+                    new BibSharp.Models.Author(author.Trim(), "", ""));
+            }
+
+            bibEntries.Add(entry);
+        }
+
+        using var writer = new StringWriter();
+        var manager = new BibManager(writer);
+
+        manager.GenerateBibTeXFile(bibEntries);
+
+        await JS.InvokeVoidAsync("downloadBibTeX", writer.ToString());
     }
 
     public record MockViite(int Id, string Avain, string Tyyppi, string Tekijat, string Otsikko, int Vuosi);
