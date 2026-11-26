@@ -2,8 +2,14 @@
 @rendermode InteractiveServer
 @using BibSharp
 @using Microsoft.JSInterop
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @inject Database Db
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider Auth
+
+<p>Hello, @username</p>
+<p>User ID: @userID</p>
 
 <h1>References</h1>
 <p>View, filter, add, and edit mock references.</p>
@@ -125,9 +131,17 @@
 
     private List<MockViite> viitteet = [];
 
+    private string username = "";
+    private string userID = "";
+
     protected override async Task OnInitializedAsync()
     {
-        var tietokannanViitteet = await Db.GetReferences("test");
+        var state = await Auth.GetAuthenticationStateAsync();
+        var user = state.User;
+        username = user.FindFirst("name")!.Value;
+        userID = user.FindFirst("sub")!.Value;
+        
+        var tietokannanViitteet = await Db.GetReferences(userID);
 
         viitteet = tietokannanViitteet.Select((v, index) =>
             new MockViite(

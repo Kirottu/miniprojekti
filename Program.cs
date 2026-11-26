@@ -1,10 +1,19 @@
+using System.IdentityModel.Tokens.Jwt;
+using dotenv.net;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Data.Sqlite;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using miniprojekti.Components;
 
 class Miniprojekti
 {
     public static async Task Main(string[] args)
     {
+        DotEnv.Load();
+        var envVars = DotEnv.Read();
+
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
@@ -14,6 +23,36 @@ class Miniprojekti
         builder.Services.AddSingleton<Database>();
 
         builder.Services.AddControllers();
+
+        builder
+            .Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+            })
+            .AddCookie()
+            .AddOpenIdConnect(options =>
+            {
+                var oidcConfig = builder.Configuration.GetSection("OpenIDConnectSettings");
+
+                options.Authority = oidcConfig["Authority"];
+                options.ClientId = oidcConfig["ClientId"];
+                options.ClientSecret = envVars["CLIENT_SECRET"];
+
+                options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.ResponseType = OpenIdConnectResponseType.Code;
+
+                options.SaveTokens = true;
+                options.GetClaimsFromUserInfoEndpoint = true;
+
+                options.MapInboundClaims = false;
+                options.TokenValidationParameters.NameClaimType = JwtRegisteredClaimNames.Name;
+                options.TokenValidationParameters.RoleClaimType = "roles";
+            });
+
+        var requireAuthPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+        builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(requireAuthPolicy);
 
         var dbString = builder.Configuration.GetConnectionString("Database")!;
         var path = dbString.Split('=')[1];
@@ -100,6 +139,10 @@ class Miniprojekti
         }
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
         app.UseHttpsRedirection();
+
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         app.UseAntiforgery();
 

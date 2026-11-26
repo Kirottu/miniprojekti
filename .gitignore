@@ -489,3 +489,4 @@ references.bib
 # Local NuGet caches (kept in-repo because the sandbox denies the global NuGet dirs)
 .nuget/
 .tmp/
+database.db*
