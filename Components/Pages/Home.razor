@@ -7,9 +7,12 @@
 @inject Database Db
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider Auth
+@inject NavigationManager NavigationManager
 
 <p>Hello, @username</p>
 <p>User ID: @userID</p>
+
+<a href="/auth/logout">Log out</a>
 
 <h1>References</h1>
 <p>View, filter, add, and edit mock references.</p>
