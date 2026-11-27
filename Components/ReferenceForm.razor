@@ -31,10 +31,12 @@
     <fieldset>
       <legend>Add authors</legend>
       <div class="reference-form">
-        <label for="authorFirstName">First Name: </label>
+        @* <label for="authorFirstName">First Name: </label>
         <input type="text" @bind-value="_authorFirstName" name="authorFirstName" id="authorFirstName"/>
         <label for="authorLastName">Surname: </label>
-        <input type="text" @bind-value="_authorLastName" name="authorLastName" id="authauthorLastName" />
+        <input type="text" @bind-value="_authorLastName" name="authorLastName" id="authorLastName" /> *@
+        <label for="authorName">Author name:</label>
+        <input type="text" @bind-value="_authorName" name="authorName" id="authorName" />
         
       </div>
       <button type="button" @onclick="SaveAuthorToForm">Add author</button>
@@ -43,7 +45,7 @@
         <p><strong>Added authors:</strong></p>
         @for (int i = 0; i < Model.Authors.Count; i++)
         {
-          <p>@Model.Authors[i].firstName @Model.Authors[i].surname</p>
+          <p>@Model.Authors[i] @Model.Authors[i]</p>
         }
       }
     </fieldset>
@@ -99,8 +101,9 @@
     protected override void OnInitialized() => Model ??= new();
 
 
-    private string _authorFirstName = string.Empty;
-    private string _authorLastName = string.Empty;
+    //private string _authorFirstName = string.Empty;
+    //private string _authorLastName = string.Empty;
+    private string _authorName = string.Empty;
 
 
     // Standard entry types
@@ -173,7 +176,8 @@
     //await AddMockReference(Model.Title, Model.Type, Model.Key, Model.Authors, Model.Fields);
 
     Model.Type = String.Empty;
-    Model.Authors = new List<(string, string)>();
+    //Model.Authors = new List<(string, string)>();
+    Model.Authors = new List<string>();
     Model.Fields = new Dictionary<string, string>();
     
   }
@@ -181,10 +185,12 @@
   private void SaveAuthorToForm()
   {
     // Save name into form
-    Model?.Authors.Add((_authorFirstName.Trim(), _authorLastName.Trim()));
+    //Model?.Authors.Add((_authorFirstName.Trim(), _authorLastName.Trim()));
+    Model?.Authors.Add(_authorName.Trim());
+    _authorName = string.Empty;
 
-    _authorFirstName = string.Empty;
-    _authorLastName = string.Empty;
+    @* _authorFirstName = string.Empty;
+    _authorLastName = string.Empty; *@
 
   }
 
@@ -240,7 +246,8 @@
     public string? Key { get; set; }
     [Required(ErrorMessage = "There should be at least 1 author")]
     [MinLength(1, ErrorMessage = "There should be at least 1 author")]
-    public List<(string firstName, string surname)> Authors { get; set; } = new List<(string, string)>();
+    //public List<(string firstName, string surname)> Authors { get; set; } = new List<(string, string)>();
+    public List<string> Authors { get; set; } = new List<string>();
 
     public Dictionary<String, String> Fields = new Dictionary<string, string>();
 
