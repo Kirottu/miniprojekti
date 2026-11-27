@@ -108,7 +108,7 @@
 
 
 
-<ReferenceForm MockViitteet="@viitteet"/>
+<ReferenceForm Username="@username"/>
 
 @code {
     private int seuraavaId = 4;
@@ -183,20 +183,6 @@
         uudetTekijat = "";
         uusiOtsikko = "";
     }
-    // This is to test ReferenceForm functionality
-    /*
-    private void LisaaMockViite((string title, string type, string key, List<(string firstName, string surname)> authors, Dictionary<string, string> fields))
-    {
-        string tekijatString = string.Join( ",", authors.ToArray() );
-        viitteet.Add(new MockViite(
-            seuraavaId++,
-            key.Trim(),
-            type,
-            tekijatString,
-            title.Trim(),
-            2026
-        ));
-    }*/
 
     private void AloitaMuokkaus(MockViite viite)
     {

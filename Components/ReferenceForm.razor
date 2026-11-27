@@ -3,6 +3,7 @@
 @using System.Linq
 @using miniprojekti.Components.Pages
 @inject ILogger<ReferenceForm> Logger
+@inject Database Db
 <!-- Lomake viitteiden luomiseen. -->
 
 
@@ -13,10 +14,10 @@
       <div class="reference-form">
         <label for="title">Title: </label>
         <br/>
-        <input type="text" name="title" id="title" class="title" required/>
+        <input type="text" name="title" id="title" class="title" @bind-value="_title"required/>
         <br/>
         <label for="type">Type: </label>
-        <select name="types" id="type-select" required>
+        <select name="types" id="type-select" @bind="_type" required>
           <option value="">--Select type--</option>
           @foreach (var type in entryTypes)
           {
@@ -24,8 +25,11 @@
           }
         </select>
         <br/>
+        <label for="year">Year: </label>
+        <input type="number" min="0" max="2100" step="1" name="year" id="year" @bind-value="_year" required/>
+        <br/>
         <label for="key">Key: </label>
-        <input type="text" name="key" id="key" required/>
+        <input type="text" name="key" id="key" @bind-value="_key" required/>
       </div>
     </fieldset>
     <fieldset>
@@ -45,7 +49,7 @@
         <p><strong>Added authors:</strong></p>
         @for (int i = 0; i < Model.Authors.Count; i++)
         {
-          <p>@Model.Authors[i] @Model.Authors[i]</p>
+          <p>@Model.Authors[i] </p>
         }
       }
     </fieldset>
@@ -93,22 +97,27 @@
 
 @code {
 
-    [SupplyParameterFromForm]
-    private Reference? Model { get; set; }
+  [SupplyParameterFromForm]
+  private FormReference? Model { get; set; }
 
-    [Parameter]
-    public List<Home.MockViite>? MockViitteet { get; set; }
-    protected override void OnInitialized() => Model ??= new();
-
-
-    //private string _authorFirstName = string.Empty;
-    //private string _authorLastName = string.Empty;
-    private string _authorName = string.Empty;
+  [Parameter]
+  public string Username { get; set; } = string.Empty;
+  protected override void OnInitialized() => Model ??= new();
 
 
-    // Standard entry types
-    private string[] entryTypes = [
-    "article",
+  private string _title = string.Empty;
+  private string _type = "";
+  private int _year = 2026;
+  private string _key = string.Empty;
+
+  //private string _authorFirstName = string.Empty;
+  //private string _authorLastName = string.Empty;
+  private string _authorName = string.Empty;
+
+
+  // Standard entry types
+  private string[] entryTypes = [
+  "article",
   "book",
   "booklet",
   "conference",
@@ -122,12 +131,12 @@
   "proceedings",
   "techreport",
   "unpublished"
-    ];
+  ];
 
-    // Standard fields from https://www.bibtex.org/Format/#standard-fields
-    private string[] fields =
+  // Standard fields from https://www.bibtex.org/Format/#standard-fields
+  private string[] fields =
   [
-    "address",
+  "address",
   "annote",
   "booktitle",
   "chapter",
@@ -147,7 +156,6 @@
   "school",
   "series",
   "volume",
-  "year",
   // Other widely used fields
   "doi",
   "url",
@@ -155,31 +163,48 @@
   "issn",
   "eprint",
   "urldate"
-    ];
-    private string _fieldName = string.Empty;
-    private string fieldErrorMsg = string.Empty;
-    private string _fieldValue = string.Empty;
+  ];
+  private string _fieldName = string.Empty;
+  private string fieldErrorMsg = string.Empty;
+  private string _fieldValue = string.Empty;
 
-    private String test = "";
-    private void HandleSubmit()
-    {
+  private String test = "";
+  private async Task HandleSubmit()
+  {
 
     if (Model == null) return;
     if (Model.Authors.Count < 1) {
       test = "Kirjoittajia tulisi olla enemmän kuin 1";
       return;
     }
-    test = "Submit painettu, näytetään tietoa lisätystä lähteestä tulevaisuudessa";
 
-    // Adding as a mock reference to test implementation
-    // Before adding to real database
-    //await AddMockReference(Model.Title, Model.Type, Model.Key, Model.Authors, Model.Fields);
+    Model.Title = _title;
+    Model.Type = _type;
+    Model.Year = _year.ToString();
+    Model.Key = _key;
 
+
+    // Save to database
+    await Db.SaveReference(
+      new Reference(
+      Guid.NewGuid(),
+      "test",
+      Model.Type,
+      Model.Key
+    )
+    {
+      authors = Model.Authors,
+      title = Model.Title,
+      year = Model.Year,
+    }
+    );
+    
     Model.Type = String.Empty;
     //Model.Authors = new List<(string, string)>();
     Model.Authors = new List<string>();
     Model.Fields = new Dictionary<string, string>();
-    
+
+    test = "Submit painettu, näytetään tietoa lisätystä lähteestä tulevaisuudessa";
   }
 
   private void SaveAuthorToForm()
@@ -236,12 +261,14 @@
   }
   */
 
-  public class Reference
+  public class FormReference
   {
     [Required]
     public string? Title { get; set; }
     [Required]
     public string? Type { get; set; }
+    [Required]
+    public string? Year { get; set; }
     [Required]
     public string? Key { get; set; }
     [Required(ErrorMessage = "There should be at least 1 author")]
